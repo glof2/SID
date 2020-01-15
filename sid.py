@@ -103,7 +103,7 @@ def downloadimages():
         res = requests.get(link).content
 
         # Save the image
-        filename = f"images\\image{i}.png"
+        filename = f"images/image{i}.png"
         with open(filename, "wb") as f:
             print(filename)
             f.write(res)
