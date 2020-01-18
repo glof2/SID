@@ -1,116 +1,85 @@
 import praw
-import usersettings as user
 import requests
 import json
 import datetime
-import sys
 import os
+import usersettings as user
 
 
-# Using sys argv to get subreddit name
-sys.argv
+class ImageDownload():
+    # INIT
+    def __init__(self):
+        self.time = datetime.datetime.now().strftime("%H%M%S")
 
-# Making sure imgs folder is here
-try:
-    os.mkdir("images")
-except FileExistsError:
-    pass
+        self.headers = {
+            "User-Agent": user.useragent
+        }
 
-# Checking if user provided a subreddit name
-if len(sys.argv) != 3:
-    print("Wrong format. The format should be:" +
-          "'sid.py subreddit_name sort_by'.")
-    quit()
+    # GETIMAGEURL
+    def getimageurl(self, clientid, clientsecret, useragent, limit,
+                    subred, sortby, saveurls=True):
 
-# Getting curent time, and making a string out of it
-time_ = datetime.datetime.now().strftime("%H%M%S")
+        reddit = praw.Reddit(client_id=clientid,
+                             client_secret=clientsecret,
+                             user_agent=useragent)
 
+        subreddit = reddit.subreddit(subred)
 
-def prawsetup():
-    global reddit
-    reddit = praw.Reddit(client_id=user.clientid,
-                         client_secret=user.clientsecret,
-                         user_agent=user.useragent)
+        links = []
 
-    # Printing some information to the user
-    print(f"Client-id: {user.clientid}")
-    print(f"Client-secret: {user.clientsecret}")
-    print(f"User-agent: {user.useragent}")
-    print(f"Subreddit to scan: {sys.argv[1]}")
-    print(f"Post limit: {user.limit}")
+        if sortby == "top":
+            sub = subreddit.top(limit=limit)
 
+        elif sortby == "hot":
+            sub = subreddit.hot(limit=limit)
 
-def getimageurl():
-    # Setting headers for requests up
-    headers = {
-        "User-Agent": user.useragent
-    }
+        elif sortby == "new":
+            sub = subreddit.new(limit=limit)
 
-    #
-    subreddit = reddit.subreddit(sys.argv[1])
-
-    # Getting image urls
-    print("".center(27, "-"))
-    print("Grabbing subreddit links...")
-
-    global links
-    links = []
-
-    if sys.argv[2] == "top":
-        sub = subreddit.top(limit=user.limit)
-
-    elif sys.argv[2] == "hot":
-        sub = subreddit.hot(limit=user.limit)
-
-    elif sys.argv[2] == "new":
-        sub = subreddit.new(limit=user.limit)
-
-    elif sys.argv[2] == "rising":
-        sub = subreddit.rising(limit=user.limit)
-    else:
-        print("sort_by should be equal to top/hot/new/rising.")
-        quit()
-
-    for url in sub:
-        # Getting JSON data
-        res = requests.get(f"https://reddit.com/{url}/.json", headers=headers)
-        data = json.loads(res.text)
-
-        # Getting link from the JSON data
-        data = data[0]["data"]["children"][0]["data"]["url"]
-
-        # Add to the links list if supported
-        if ".jpg" or ".png" in data:
-            links.append(data)
-
-        # If not supported, move to the next link
+        elif sortby == "rising":
+            sub = subreddit.rising(limit=limit)
         else:
-            continue
+            return "SID: Sortby Argument error"
 
-        # Print, and save each supported link
-        with open(f"links{time_}.txt", "a") as f:
-            f.write(f"{data}\n")
-            print(data)
+        for url in sub:
+            # Getting JSON data
+            res = requests.get(f"https://reddit.com/{url}/.json",
+                               headers=self.headers)
+            data = json.loads(res.text)
 
-    print("".center(27, "-"))
-    print(f"Grabbed {len(links)} links.")
+            # Getting link from the JSON data
+            data = data[0]["data"]["children"][0]["data"]["url"]
 
+            # Add to the links list if supported
+            if ".png" in data:
+                links.append(data)
 
-def downloadimages():
-    i = 0
-    for link in links:
-        # Get the bytes of the image
-        res = requests.get(link).content
+            elif ".jpg" in data:
+                links.append(data)
 
-        # Save the image
-        filename = f"images\\image{i}.png"
-        with open(filename, "wb") as f:
-            print(filename)
-            f.write(res)
-        i += 1
+            # If not supported, move to the next link
+            else:
+                continue
 
+            # Print, and save each supported link and saveurls is true
+            if saveurls:
+                with open(f"links{self.time}.txt", "a") as f:
+                    f.write(f"{data}\n")
+        return links
 
-# Main code
-prawsetup()
-getimageurl()
-downloadimages()
+    # DOWNLOADIMAGES
+    def downloadimages(self, links, filename="images",
+                       foldername="images"):
+        # Making sure imgs folder is here
+        os.makedirs(foldername, exist_ok=True)
+        i = 0
+        for link in links:
+            # Get the bytes of the image
+            res = requests.get(link).content
+
+            # Save the image
+            filename_ = os.path.join(foldername, f"{filename}{i}.png")
+            with open(filename_, "wb") as f:
+                print(filename_)
+                f.write(res)
+            i += 1
