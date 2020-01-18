@@ -16,8 +16,8 @@ class ImageDownload():
         }
 
     # GETIMAGEURL
-    def getimageurl(self, clientid, clientsecret, useragent, limit,
-                    subred, sortby, saveurls=True):
+    def getimageurl(self, clientid="", clientsecret="", useragent="", limit="",
+                    subred="", sortby="", saveurls=True):
 
         reddit = praw.Reddit(client_id=clientid,
                              client_secret=clientsecret,
